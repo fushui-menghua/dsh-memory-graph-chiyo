@@ -168,7 +168,8 @@ export class MemoryGraph {
       const relations = (raw.relations || []).map((r) => {
         if (!REL_TYPES.includes(r?.type)) throw new Error(`关系类型非法：${r?.type}`);
         if (!r?.targetId) throw new Error('关系缺少 targetId');
-        const personOk = r.type === 'person' && (this.options.personIds || []).includes(String(r.targetId));
+        const personId = String(r.targetId);
+        const personOk = r.type === 'person' && (personId.startsWith('p_') || (this.options.personIds || []).includes(personId));
         if (!idSet.has(r.targetId) && !personOk) throw new Error(`关系指向不存在的节点：${r.targetId}`);
         return { type: r.type, targetId: String(r.targetId), weight: Math.max(0, Math.min(1, Number(r.weight ?? 1))) };
       });
@@ -210,6 +211,10 @@ export class MemoryGraph {
       };
       if (raw.idempotencyKey) node.idempotencyKey = String(raw.idempotencyKey);
       if (raw.mentionKey) node.mentionKey = String(raw.mentionKey);
+      // 补录与来源元数据要保留，召回与审计都要用
+      if (raw.origin) node.origin = String(raw.origin);
+      if (raw.originWeight !== undefined) node.originWeight = Number(raw.originWeight);
+      if (raw.backfillEvidence) node.backfillEvidence = raw.backfillEvidence;
       if (kind === 'plan') {
         node.status = 'active';
         const days = Number(raw.validDays ?? this.options.planDefaultDays);
@@ -306,7 +311,8 @@ export class MemoryGraph {
           relevant = sim > 0 || keywordHit > 0;
         }
         const freshness = Math.exp(-Math.max(0, now - Number(n.lastTouchedAt || n.createdAt || now)) / (7 * DAY)) * 0.3;
-        const score = sim * 2 + keywordHit + Number(n.importance || 0) * 0.5 + freshness;
+        const weight = n.originWeight === undefined ? 1 : Math.max(0, Math.min(1, Number(n.originWeight)));
+        const score = (sim * 2 + keywordHit + Number(n.importance || 0) * 0.5 + freshness) * weight;
         return { node: n, score, relevant };
       })
       // 有查询时，只留下"真的跟查询有点关系"的节点；否则重要度和新鲜度会让所有节点都通过

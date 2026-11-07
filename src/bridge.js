@@ -106,8 +106,13 @@ export function createBridgeMemory(config = {}) {
     },
 
     /** 做梦的时间窗判断：凌晨窗口内且今天还没做过 → 返回素材和提示词 */
-    dreamTick({ fromHour = 2, toHour = 7, now = Date.now() } = {}) {
-      const h = new Date(now).getHours();
+    dreamTick({ fromHour = 2, toHour = 7, now = Date.now(), hour, timeZone } = {}) {
+      // 服务器时区可能不是本地：允许显式给 hour，或给 IANA 时区
+      let h;
+      if (Number.isFinite(Number(hour))) h = Number(hour);
+      else if (timeZone) {
+        h = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone }).format(new Date(now)));
+      } else h = new Date(now).getHours();
       if (h < fromHour || h >= toHour) return null;
       const today = new Date(now).toLocaleDateString('sv-SE');
       const done = mem.dream.list({ scope, limit: 20 }).some((d) => d.date === today);

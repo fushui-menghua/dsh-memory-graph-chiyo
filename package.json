@@ -1,12 +1,13 @@
 {
   "name": "dsh-memory-graph-chiyo",
-  "version": "0.7.0",
-  "description": "Memory system for AI agents: anchored graph, auto-extraction, prompt assembly, conflict detection, snapshot, shared memory, consolidation. TypeScript types, zero deps.",
+  "version": "1.0.0",
+  "description": "Complete memory layer for bridge-based AI personas: anchored graph, backfill protocol, ACL, mood/dream/task, interactive galaxy map, recall baseline, nightly consolidation.",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
     ".": "./src/index.js",
     "./plugin": "./plugin.js",
+    "./bridge": "./src/bridge.js",
     "./package.json": "./package.json"
   },
   "files": [
@@ -25,7 +26,8 @@
     "demo": "node test/demo.mjs",
     "cli": "node bin/cli.mjs",
     "bench": "node bin/bench.mjs",
-    "test:plugin": "node test/plugin.test.mjs"
+    "test:plugin": "node test/plugin.test.mjs",
+    "eval": "node bin/recall-eval.mjs"
   },
   "keywords": [
     "ai-agent",
@@ -44,7 +46,14 @@
     "sensitive-filter",
     "dsh",
     "dsh-plugin",
-    "deepseek-harness"
+    "deepseek-harness",
+    "bridge",
+    "qq-bot",
+    "memory-layer",
+    "mood",
+    "dream",
+    "tasks",
+    "persona-memory"
   ],
   "license": "MIT",
   "engines": {

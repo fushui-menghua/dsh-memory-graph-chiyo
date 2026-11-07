@@ -2,7 +2,7 @@
 
 > 可回溯、会遗忘、会睡觉整理的记忆内核。给 AI agent 用的长期记忆图。
 
-[![tests](https://img.shields.io/badge/tests-51%20passing-brightgreen)](https://github.com/fushui-menghua/dsh-memory-graph-chiyo)
+[![tests](https://img.shields.io/badge/tests-67%20passing-brightgreen)](https://github.com/fushui-menghua/dsh-memory-graph-chiyo)
 [![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/fushui-menghua/dsh-memory-graph-chiyo/blob/main/LICENSE)
 
 ## 为什么又一个记忆库
@@ -61,8 +61,41 @@
 | **损坏修复** | `scanStore` / `repairStore`，坏行剔除并备份原文件 |
 | **TypeScript 类型** | 内置 `index.d.ts` |
 | **性能基准** | `npm run bench`：2000 节点写入 ~1400 条/s、召回 0.42ms |
+| **情绪记忆** | 心情时间线（含原因/强度）、近七天分布、给记忆打情绪标签 |
+| **做梦** | 从真实记忆挑素材 → 生成写梦提示词（或模板梦）→ 记录并保留素材引用 |
+| **自己的待办** | 加/完成/放弃/挑下一件/统计，给提示词用的摘要 |
+| **补录协议** | 只允许 fact、一次≤2 条、证据三元组、整批原子、召回权重 0.8 |
+| **权限模型** | 主人/agent/群/陌生人 × scope 模式，读写分离 |
+| **人物熟悉度** | 熟悉度增长 + 半衰期衰减，合并后关系自动重指 |
+| **交互式星图** | 单文件 HTML：缩放/拖拽/过滤/搜索/看锚点，离线可用 |
+| **召回基线** | `npm run eval` → hit@1 / hit@3 |
 | 命令行 | `memory-graph health/recall/recall-all/nightly/shared-*/scan/repair` |
 | 零依赖 | 只用 Node 内置模块 |
+
+## 给桥接用（QQ / 微信机器人）
+
+如果你在用桥接 + DSH 人格机器人，用适配层两行接入：
+
+```js
+import { createBridgeMemory } from 'dsh-memory-graph-chiyo/bridge';
+const bm = createBridgeMemory({ dir: './memory', scope: 'agent:chiyo' });
+
+bm.beforeTurn({ query: 用户这句话 });   // 拼进提示词
+bm.afterTurn({ messages: [用户, 回复] }); // 自动抽记忆
+bm.nightly({ apply: true });            // 每天整理
+```
+
+除了记忆，还可以给她情绪、梦和待办：
+
+```js
+bm.mood.set({ label: '暖', reason: '被夸了一句' });   // 记心情
+bm.dream.seed();                                      // 挑入梦素材
+bm.dream.record({ text: '梦见下雨…', mood: '暖' });    // 记梦
+bm.tasks.add({ text: '整理星图分类' });                // 加待办
+bm.tasks.pickNext();                                  // 下一件
+```
+
+详见 [docs/BRIDGE.md](docs/BRIDGE.md)。
 
 ## 安装
 

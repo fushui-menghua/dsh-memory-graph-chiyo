@@ -2,7 +2,7 @@
 
 > 可回溯、会遗忘、会睡觉整理的记忆内核。给 AI agent 用的长期记忆图。
 
-[![tests](https://img.shields.io/badge/tests-31%20passing-brightgreen)](https://github.com/fushui-menghua/dsh-memory-graph-chiyo)
+[![tests](https://img.shields.io/badge/tests-47%20passing-brightgreen)](https://github.com/fushui-menghua/dsh-memory-graph-chiyo)
 [![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/fushui-menghua/dsh-memory-graph-chiyo/blob/main/LICENSE)
 
 ## 为什么又一个记忆库
@@ -50,7 +50,18 @@
 | **时段轨迹 / 漏检扫描** | 回看某段时间发生了什么；找出没被任何锚点引用过的话 |
 | **人格旋钮（可选）** | 六个性格旋钮，带单步/每日/漂移三重刹车（角色扮演层，非记忆） |
 | **星图可视化** | 零依赖 SVG + Mermaid 输出，可直接贴 README |
-| 命令行 | `memory-graph health/recall/recall-all/nightly/shared-*` |
+| **自动抽取管道** | `extractAndWrite`：从对话抽规则/事实 → 敏感过滤 → 锚点校验 → 幂等去重 → 落盘 |
+| **提示词装配** | `assembleContext`：按 token 预算分区拼装（记得的事/在办的事/印象/共享） |
+| **快照导入导出** | 整个数据目录导成单个 JSON，可还原（换机器、误删恢复） |
+| **关系强度衰减** | 边有 weight，默认半年半衰期，低于阈值自动摘边 |
+| **共享审计与配额** | 每日提名上限、依赖级联撤销、独立审计日志 |
+| **store 缓存** | 按文件 mtime 失效，写入即失效，召回不必全量解析 |
+| **矛盾检测** | 喜欢/不喜欢这类翻转 → 旧的标 `superseded`，只召回新的 |
+| **多进程写锁** | 目录级锁 + 超时 + 陈旧锁清理 |
+| **损坏修复** | `scanStore` / `repairStore`，坏行剔除并备份原文件 |
+| **TypeScript 类型** | 内置 `index.d.ts` |
+| **性能基准** | `npm run bench`：2000 节点写入 ~1400 条/s、召回 0.42ms |
+| 命令行 | `memory-graph health/recall/recall-all/nightly/shared-*/scan/repair` |
 | 零依赖 | 只用 Node 内置模块 |
 
 ## 安装
@@ -249,10 +260,11 @@ mem.persona.revert();
 
 ```bash
 npm test
-# 31 tests: 锚点 / 召回 / 去重 / 即时记忆 / 整理 / 层推进 / 体检
+# 47 tests: 锚点 / 召回 / 去重 / 即时记忆 / 整理 / 层推进 / 体检
          跨 scope / 共享审批 / plan 过期 / 关系边扩展 / nightly 全流程
-         压缩：token 估算 / 工具裁剪 / 轮切分 / 阈值 / 折叠 / expand / 自定义摘要器 / 保证变小
-         规则抽取 / 敏感过滤 / 锚点强校验 / 幂等键 / 人物合并 / 时间线 / 漏检 / 体检六项 / 人格刹车 / 星图输出
+         压缩 / 规则抽取 / 敏感过滤 / 锚点强校验 / 幂等键 / 人物合并 / 时间线 / 漏检
+         自动抽取 / 提示词装配 / 快照往返 / 关系衰减 / 共享审计配额 / store 缓存
+         矛盾检测 / 矛盾扫描 / 写锁超时 / 陈旧锁 / 损坏修复 / d.ts 完整 / 召回性能护栏
 ```
 
 ## 设计取舍

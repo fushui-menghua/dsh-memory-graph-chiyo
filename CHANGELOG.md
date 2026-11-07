@@ -1,5 +1,74 @@
 # Changelog
 
+## 1.0.0 — 2026-11-07
+
+除唤醒/潜水调度外，记忆能力对齐线上系统。
+
+### 新增
+- `src/backfill.js`：补录协议（只允许 fact、一次≤2 条、证据三元组、整批原子、召回权重 0.8）
+- `src/access.js`：权限模型（主人/agent/群/陌生人 × scope 模式，read/write 分离）
+- `src/galaxy.js`：**完整版星图**——单文件可交互 HTML（缩放/拖拽/按层过滤/搜索/点节点看锚点与关系），离线可用
+- `bin/recall-eval.mjs`：召回基线评测（hit@1 / hit@3）
+- `person.js`：熟悉度字段 + 增长/半衰期衰减 + **合并后关系重指**
+- `bridge.js`：
+  - `observe({role,text})` 逐条喂消息，assistant 到达自动抽取
+  - `dreamTick()` 做梦时间窗 + 素材 + 提示词（不负责定时）
+  - `plan()` 待办节拍：挑下一件并标 doing，返回建议间隔
+- CLI 新增 `galaxy` 命令导出交互式星图
+
+### 修复
+- `core.write` 透传 `origin` / `originWeight` / `backfillEvidence`（之前补录元数据会丢）
+- 关系可指向 `p_` 开头的人物记录（之前只认同 scope 节点）
+
+### 测试
+61 → **67**
+
+## 0.9.0 — 2026-11-07
+
+补齐最后三块「人格陪伴」能力：情绪、做梦、待办。
+
+### 新增
+- `src/emotions.js`：情绪记忆层
+  - `mood.set()` 记一次心情（含原因、强度、标签）
+  - `mood.current()` 当前心情（超过 48h 视为没记录）
+  - `mood.history()` / `mood.summary()` 时间线与近七天分布
+  - `mood.tagMemory()` 给记忆打情绪标签（带锚点）
+- `src/dream.js`：做梦
+  - `dream.seed()` 从记忆里挑入梦素材（优先带锚点、有重要度的）
+  - `dream.buildPrompt()` 生成给模型写梦的提示词；`templateDream()` 无模型时的确定性版本
+  - `dream.record()` / `list()` / `latest()` 记录与回看（梦里引用了哪些记忆也存）
+- `src/tasks.js`：自己的待办
+  - `tasks.add()` / `done()` / `drop()` / `pickNext()` / `stats()` / `summary()`
+- 桥接适配层同步暴露：`bm.mood` / `bm.dream` / `bm.tasks`
+
+### 说明
+- 这些是**可选模块**：不用就不调用，不影响原有记忆能力
+- 不做定时唤醒（那是调度层的事），只提供数据与挑选逻辑
+
+### 测试
+56 → **61**
+
+## 0.8.0 — 2026-11-07
+
+定位收敛：**面向桥接场景的人格机器人记忆层**。
+
+### 新增
+- `src/bridge.js`：桥接适配层 `createBridgeMemory()`
+  - `beforeTurn({ query })` → 返回要拼进提示词的记忆块（按 token 预算）
+  - `afterTurn({ messages, speaker })` → 自动抽取落盘（规则兜底，不调模型）
+  - `nightly({ apply })` / `health()` / `recall()` / `write()`
+  - 记忆层抛错不影响对话（都包了 try/catch）
+- `docs/BRIDGE.md`：桥接三步接入说明
+- 导出子路径 `./bridge`
+
+### 修复
+- `cordis.patch.yml` 的 `name` 改为 `dsh-memory-graph-chiyo/plugin`
+  - 之前指向包根（`src/index.js`，是库，没有 `apply`），DSH 静默跳过不挂载
+  - 已在本地 0.7.1 验证：数据目录会被创建、5 个工具能注册
+
+### 测试
+51 → **56**（新增桥接适配 5 个）
+
 ## 0.7.0 — 2026-11-07
 
 从「库」变成「既能 import、也能装进 DSH 的插件」。

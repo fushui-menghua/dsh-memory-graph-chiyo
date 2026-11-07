@@ -8,6 +8,7 @@
  *   node bin/cli.mjs shared-list --dir ./data
  *   node bin/cli.mjs shared-approve --dir ./data --id s_xxx --by owner
  */
+import fs from 'node:fs';
 import { createMemory } from '../src/index.js';
 
 function parseArgs(argv) {
@@ -66,6 +67,13 @@ switch (cmd) {
   case 'consolidate': {
     const r = memory.consolidate(scope, { apply: args.apply === true });
     console.log(JSON.stringify({ scope: r.scope, total: r.total, archived: r.archived, reinforced: r.reinforced, apply: r.apply }, null, 2));
+    break;
+  }
+  case 'galaxy': {
+    const out = String(args.out ?? 'memory-galaxy.html');
+    const html = memory.galaxyHtml(memory.load(scope), { title: args.title ? String(args.title) : '记忆星图', scope });
+    fs.writeFileSync(out, html, 'utf8');
+    console.log('已导出交互式星图:', out, '（双击用浏览器打开）');
     break;
   }
   case 'scan': {

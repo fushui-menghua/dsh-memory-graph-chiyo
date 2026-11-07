@@ -46,6 +46,7 @@ export class PersonLayer {
       name: n,
       aliases: [...new Set(aliases.filter((x) => x && x !== n))],
       note: String(note).slice(0, 200),
+      familiarity: 0,
       confirmed: Boolean(confirmed),
       createdAt: at,
       updatedAt: at,
@@ -97,6 +98,67 @@ export class PersonLayer {
     this.store.append(PERSON_SCOPE, { ...source, archived: true, mergedInto: target.id, updatedAt: at });
     this.store.append(PERSON_SCOPE, { ...p, status: 'approved', approvedBy: String(by).slice(0, 60), updatedAt: at });
     return merged;
+  }
+
+  /** 熟悉度：见面/深聊就加一点，长期不联系会衰减 */
+  bumpFamiliarity(name, delta = 0.05, { reason = '' } = {}) {
+    const person = this.resolve(name);
+    if (!person) throw new Error('人物不存在');
+    const at = this.now();
+    const next = {
+      ...person,
+      familiarity: Math.max(0, Math.min(1, Number(person.familiarity || 0) + Number(delta || 0))),
+      updatedAt: at,
+      lastMetAt: at,
+      familiarityReason: String(reason).slice(0, 100),
+    };
+    this.store.append(PERSON_SCOPE, next);
+    return next;
+  }
+
+  /** 熟悉度衰减：默认 180 天半衰期 */
+  decayFamiliarity({ halfLifeDays = 180, min = 0.01 } = {}) {
+    const at = this.now();
+    const changed = [];
+    for (const p of this.load()) {
+      if (p.kind === 'merge-proposal') continue;
+      const fam = Number(p.familiarity || 0);
+      if (fam <= 0) continue;
+      const idleDays = Math.max(0, at - Number(p.lastMetAt || p.updatedAt || at)) / 86400000;
+      const next = fam * Math.pow(0.5, idleDays / halfLifeDays);
+      if (next < min) {
+        this.store.append(PERSON_SCOPE, { ...p, familiarity: 0, updatedAt: at });
+        changed.push({ name: p.name, from: fam, to: 0 });
+      } else if (Math.abs(next - fam) > 1e-6) {
+        this.store.append(PERSON_SCOPE, { ...p, familiarity: Number(next.toFixed(3)), updatedAt: at });
+        changed.push({ name: p.name, from: fam, to: Number(next.toFixed(3)) });
+      }
+    }
+    return changed;
+  }
+
+  /**
+   * 合并并把指向旧人物的关系重指到新人物（需要传入 memory.graph 才能改节点）。
+   * 不传 graph 时退化成普通 approveMerge。
+   */
+  mergeAndRelink(graph, proposalId, { by = 'unknown', scope = null } = {}) {
+    const all = this.store.load(PERSON_SCOPE);
+    const p = all.find((x) => x.id === proposalId && x.kind === 'merge-proposal');
+    if (!p) throw new Error('合并提议不存在');
+    const merged = this.approveMerge(proposalId, { by });
+    let relinked = 0;
+    if (graph && scope) {
+      const nodes = graph.load(scope);
+      for (const node of nodes) {
+        if (node.archived) continue;
+        const rels = node.relations || [];
+        if (!rels.some((r) => r.targetId === p.fromId)) continue;
+        const next = rels.map((r) => (r.targetId === p.fromId ? { ...r, targetId: p.intoId } : r));
+        graph.store.append(scope, { ...node, relations: next, updatedAt: this.now() });
+        relinked += 1;
+      }
+    }
+    return { merged, relinked };
   }
 
   /** 别名解析：给一个称呼，找到登记的人 */

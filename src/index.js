@@ -22,6 +22,11 @@ import { buildEpisode, missedScan } from './timeline.js';
 import { healthReport } from './health.js';
 import { renderStarMap, renderMermaid } from './viz.js';
 import { scanSensitive } from './sensitive.js';
+import { heuristicExtract, extractAndWrite, buildExtractionPrompt } from './extractor.js';
+import { assembleContext } from './assemble.js';
+import { exportBundle, importBundle, saveBundle, loadBundle } from './snapshot.js';
+import { scanConflicts, findConflict, polarityOf } from './conflicts.js';
+import { scanStore, repairStore } from './repair.js';
 
 export { JsonlStore } from './store.js';
 export { MemoryGraph, LAYERS, KINDS, CATEGORIES, REL_TYPES, PLAN_STATUSES, similarity, normalizeText, importanceOf } from './core.js';
@@ -38,6 +43,11 @@ export { healthReport } from './health.js';
 export { renderStarMap, renderMermaid } from './viz.js';
 export { scanSensitive, assertNotSensitive } from './sensitive.js';
 export { findMissingAnchors, quoteExists, extractAnchors } from './anchor.js';
+export { heuristicExtract, extractAndWrite, buildExtractionPrompt } from './extractor.js';
+export { assembleContext } from './assemble.js';
+export { exportBundle, importBundle, saveBundle, loadBundle } from './snapshot.js';
+export { scanConflicts, findConflict, polarityOf } from './conflicts.js';
+export { scanStore, repairStore } from './repair.js';
 
 export function createMemory({ dir, options = {}, clock } = {}) {
   const store = new JsonlStore({ dir: dir || './memory-data' });
@@ -86,6 +96,18 @@ export function createMemory({ dir, options = {}, clock } = {}) {
     starMap: (list, opts) => renderStarMap(list ?? memory.load(opts?.scope ?? 'user:demo'), opts),
     mermaid: (list, opts) => renderMermaid(list ?? memory.load(opts?.scope ?? 'user:demo'), opts),
     scanSensitive: (text, opts) => scanSensitive(text, opts),
+
+    // 抽取 / 装配 / 快照 / 关系衰减
+    heuristicExtract: (messages, opts) => heuristicExtract(messages, opts),
+    extractAndWrite: (scope, messages, opts) => extractAndWrite(memory, scope, messages, opts),
+    buildExtractionPrompt: (messages) => buildExtractionPrompt(messages),
+    assembleContext: (opts) => assembleContext(memory, opts),
+    exportBundle: (opts) => exportBundle(opts?.dir ?? dir, opts),
+    importBundle: (bundle, opts) => importBundle(bundle, opts?.dir ?? dir, opts),
+    decayRelations: (scope, opts) => graph.decayRelations(scope, opts),
+    scanConflicts: (scope, opts) => scanConflicts(graph, scope, opts),
+    scanStore: (opts) => scanStore(opts?.dir ?? dir),
+    repairStore: (opts) => repairStore(opts?.dir ?? dir, opts),
 
     // 整理与体检
     consolidate: (scope, opts) => consolidate(graph, scope, opts),

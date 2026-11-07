@@ -1,16 +1,20 @@
 {
   "name": "dsh-memory-graph-chiyo",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Memory system for AI agents: anchored graph, auto-extraction, prompt assembly, conflict detection, snapshot, shared memory, consolidation. TypeScript types, zero deps.",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./plugin": "./plugin.js",
+    "./package.json": "./package.json"
   },
   "files": [
     "src",
     "bin",
     "docs",
+    "plugin.js",
+    "cordis.patch.yml",
     "index.d.ts",
     "README.md",
     "CHANGELOG.md",
@@ -20,7 +24,8 @@
     "test": "node --test",
     "demo": "node test/demo.mjs",
     "cli": "node bin/cli.mjs",
-    "bench": "node bin/bench.mjs"
+    "bench": "node bin/bench.mjs",
+    "test:plugin": "node test/plugin.test.mjs"
   },
   "keywords": [
     "ai-agent",
@@ -36,11 +41,15 @@
     "persona",
     "knowledge-graph-viz",
     "rules-extraction",
-    "sensitive-filter"
+    "sensitive-filter",
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness"
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=20",
+    "dsh": ">=0.1.7-rc.1"
   },
   "author": "浮水梦华",
   "repository": {
@@ -54,5 +63,10 @@
   "bin": {
     "memory-graph": "./bin/cli.mjs"
   },
-  "types": "./index.d.ts"
+  "types": "./index.d.ts",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
 }

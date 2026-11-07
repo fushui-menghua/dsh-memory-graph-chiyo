@@ -35,7 +35,7 @@ if (!cmd) {
   console.log('用法: cli.mjs <health|recall|recall-all|tick|consolidate|nightly|shared-list|shared-approve|shared-revoke> [--dir ...] [--scope ...] [--query ...] [--apply]');
   process.exit(0);
 }
-if (!scope && !['nightly', 'shared-list', 'shared-approve', 'shared-revoke'].includes(cmd)) {
+if (!scope && !['nightly', 'shared-list', 'shared-approve', 'shared-revoke', 'scan', 'repair'].includes(cmd)) {
   console.error('缺少 --scope（或命令不适用）');
   process.exit(1);
 }
@@ -66,6 +66,14 @@ switch (cmd) {
   case 'consolidate': {
     const r = memory.consolidate(scope, { apply: args.apply === true });
     console.log(JSON.stringify({ scope: r.scope, total: r.total, archived: r.archived, reinforced: r.reinforced, apply: r.apply }, null, 2));
+    break;
+  }
+  case 'scan': {
+    console.log(JSON.stringify(memory.scanStore({ dir }), null, 2));
+    break;
+  }
+  case 'repair': {
+    console.log(JSON.stringify(memory.repairStore({ dir, apply: args.apply === true }), null, 2));
     break;
   }
   case 'nightly': {

@@ -12,6 +12,7 @@
 import crypto from 'node:crypto';
 import { assertNotSensitive } from './sensitive.js';
 import { findMissingAnchors } from './anchor.js';
+import { findConflict } from './conflicts.js';
 
 export const LAYERS = ['instant', 'short', 'long', 'cold', 'permanent'];
 export const KINDS = ['fact', 'impression', 'plan'];
@@ -83,6 +84,13 @@ function relevanceOf(node, query) {
   return { sim, keywordHit, relevant: sim > 0 || keywordHit > 0 };
 }
 
+function simFromGrams(a, b) {
+  if (!a.size || !b.size) return 0;
+  let hit = 0;
+  for (const g of a) if (b.has(g)) hit += 1;
+  return hit / Math.sqrt(a.size * b.size);
+}
+
 function scoreNode(node, query, now) {
   const { sim, keywordHit } = relevanceOf(node, query);
   const freshness = Math.exp(-Math.max(0, now - Number(node.lastTouchedAt || node.createdAt || now)) / (7 * DAY)) * 0.3;
@@ -95,9 +103,21 @@ export class MemoryGraph {
     this.store = store;
     this.options = { ...DEFAULTS, ...options };
     this.clock = clock || (() => Date.now());
+    this._info = new Map(); // nodeId → { v, norm, grams }，召回热路径避免重复切词
   }
 
   now() { return Number(this.clock()); }
+
+  _infoOf(node) {
+    const v = Number(node.updatedAt || node.createdAt || 0);
+    const hit = this._info.get(node.id);
+    if (hit && hit.v === v) return hit;
+    const norm = normalizeText(node.text);
+    const info = { v, norm, grams: bigrams(norm) };
+    this._info.set(node.id, info);
+    if (this._info.size > 200000) this._info.clear();
+    return info;
+  }
 
   load(scope) { return this.store.load(scopeKey(scope)); }
 
@@ -148,8 +168,9 @@ export class MemoryGraph {
       const relations = (raw.relations || []).map((r) => {
         if (!REL_TYPES.includes(r?.type)) throw new Error(`关系类型非法：${r?.type}`);
         if (!r?.targetId) throw new Error('关系缺少 targetId');
-        if (!idSet.has(r.targetId)) throw new Error(`关系指向不存在的节点：${r.targetId}`);
-        return { type: r.type, targetId: String(r.targetId) };
+        const personOk = r.type === 'person' && (this.options.personIds || []).includes(String(r.targetId));
+        if (!idSet.has(r.targetId) && !personOk) throw new Error(`关系指向不存在的节点：${r.targetId}`);
+        return { type: r.type, targetId: String(r.targetId), weight: Math.max(0, Math.min(1, Number(r.weight ?? 1))) };
       });
 
       const key = normalizeText(text);
@@ -194,6 +215,11 @@ export class MemoryGraph {
         const days = Number(raw.validDays ?? this.options.planDefaultDays);
         node.validTo = Number(raw.validTo ?? (at + days * DAY));
       }
+      const conflict = findConflict(alive, { text, kind, category: node.category });
+      if (conflict) {
+        node.supersedes = conflict.old.id;
+        this.store.append(s, { ...conflict.old, superseded: true, supersededBy: node.id, supersededAt: at, updatedAt: at });
+      }
       node.importance = importanceOf(node, at);
       this.store.append(s, node);
       byText.set(key, node);
@@ -203,9 +229,10 @@ export class MemoryGraph {
     return { written, merged, total: written.length + merged.length };
   }
 
-  _visible(nodes, { includeCold = false, includeArchived = false, now }) {
+  _visible(nodes, { includeCold = false, includeArchived = false, includeSuperseded = false, now }) {
     return nodes.filter((n) => {
       if (!includeArchived && n.archived) return false;
+      if (!includeSuperseded && n.superseded) return false;
       if (!includeCold && n.layer === 'cold') return false;
       if (n.layer === 'instant' && n.instantStatus === 'expired') return false;
       if (n.kind === 'plan' && n.status && n.status !== 'active') return false;
@@ -215,11 +242,11 @@ export class MemoryGraph {
   }
 
   /** 单 scope 召回；hops>0 时沿关系边扩展一跳 */
-  recall(scope, { query = '', limit = 20, includeCold = false, includeArchived = false, hops = 0 } = {}) {
+  recall(scope, { query = '', limit = 20, includeCold = false, includeArchived = false, includeSuperseded = false, hops = 0, track = true, trackThrottleMs = 30000 } = {}) {
     const s = scopeKey(scope);
     const now = this.now();
     const all = this.load(s);
-    const picked = this._rank(all, { query, limit, includeCold, includeArchived, now });
+    const picked = this._rank(all, { query, limit, includeCold, includeArchived, includeSuperseded, now });
 
     let expanded = [];
     if (hops > 0 && picked.length) {
@@ -247,18 +274,41 @@ export class MemoryGraph {
     }
 
     const chosen = [...picked, ...expanded].slice(0, limit);
-    for (const x of chosen) {
-      const bumped = { ...x.node, recallCount: Number(x.node.recallCount || 0) + 1, updatedAt: now };
-      bumped.importance = importanceOf(bumped, now);
-      this.store.append(s, bumped);
+    // 一次批量写：召回是很频繁的操作，逐条 append 会把性能拖死
+    const bumps = [];
+    if (track) {
+      for (const x of chosen) {
+        const lastAt = Number(x.node.lastRecallAt || 0);
+        // 30 秒内反复召回同一条不重复累加，避免读操作把写盘拖满
+        if (now - lastAt < trackThrottleMs) continue;
+        const bumped = { ...x.node, recallCount: Number(x.node.recallCount || 0) + 1, lastRecallAt: now, updatedAt: now };
+        bumped.importance = importanceOf(bumped, now);
+        bumps.push(bumped);
+      }
+      if (bumps.length) this.store.appendMany(s, bumps);
     }
     return chosen.map((x) => ({ ...x.node, score: Number(x.score.toFixed(3)), ...(x.via ? { via: x.via, relation: x.rel } : {}) }));
   }
 
-  _rank(nodes, { query, limit, includeCold, includeArchived, now }) {
-    const visible = this._visible(nodes, { includeCold, includeArchived, now });
+  _rank(nodes, { query, limit, includeCold, includeArchived, includeSuperseded = false, now }) {
+    const visible = this._visible(nodes, { includeCold, includeArchived, includeSuperseded, now });
+    const qNorm = query ? normalizeText(query) : '';
+    const qGrams = query ? bigrams(qNorm) : null;
     return visible
-      .map((n) => ({ node: n, score: scoreNode(n, query, now), relevant: relevanceOf(n, query).relevant }))
+      .map((n) => {
+        const info = this._infoOf(n);
+        let sim = 0;
+        let keywordHit = 0;
+        let relevant = true;
+        if (query) {
+          sim = simFromGrams(qGrams, info.grams);
+          keywordHit = info.norm.includes(qNorm) ? 0.4 : 0;
+          relevant = sim > 0 || keywordHit > 0;
+        }
+        const freshness = Math.exp(-Math.max(0, now - Number(n.lastTouchedAt || n.createdAt || now)) / (7 * DAY)) * 0.3;
+        const score = sim * 2 + keywordHit + Number(n.importance || 0) * 0.5 + freshness;
+        return { node: n, score, relevant };
+      })
       // 有查询时，只留下"真的跟查询有点关系"的节点；否则重要度和新鲜度会让所有节点都通过
       .filter((x) => (query ? x.relevant && x.score > 0.05 : true))
       .sort((a, b) => b.score - a.score)
@@ -309,6 +359,29 @@ export class MemoryGraph {
     const updated = { ...node, status, updatedAt: at, statusReason: String(reason).slice(0, 200) };
     this.store.append(s, updated);
     return updated;
+  }
+
+  /** 关系强度衰减：多久没动静就衰减多少，低于阈值直接摘掉 */
+  decayRelations(scope, { now = this.now(), halfLifeDays = 180, minWeight = 0.05, apply = true } = {}) {
+    const s = scopeKey(scope);
+    const nodes = this.load(s).filter((n) => !n.archived && (n.relations || []).length);
+    const changes = [];
+    for (const n of nodes) {
+      const idleDays = Math.max(0, now - Number(n.lastTouchedAt || n.createdAt || now)) / DAY;
+      const factor = Math.pow(0.5, idleDays / halfLifeDays);
+      const next = [];
+      let dropped = 0;
+      for (const rel of n.relations || []) {
+        const w = Number(rel.weight ?? 1) * factor;
+        if (w < minWeight) { dropped += 1; continue; }
+        next.push({ ...rel, weight: Number(w.toFixed(3)) });
+      }
+      if (!dropped && next.every((r, i) => r.weight === n.relations[i]?.weight)) continue;
+      const updated = { ...n, relations: next, updatedAt: now };
+      if (apply) this.store.append(s, updated);
+      changes.push({ id: n.id, dropped, before: (n.relations || []).length, after: next.length });
+    }
+    return changes;
   }
 
   /** 层状态机：short→long / →cold */

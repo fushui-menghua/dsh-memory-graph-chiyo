@@ -1,7 +1,7 @@
 {
   "name": "dsh-memory-graph-chiyo",
-  "version": "0.1.0",
-  "description": "Anchored, decaying, sleep-consolidating memory graph for AI agents. 可回溯、会遗忘、会睡觉整理的记忆内核。",
+  "version": "0.4.0",
+  "description": "Anchored memory + anchored compaction for AI agents: rules, person layer, personas, star-map viz, nightly consolidation. 零依赖。",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
@@ -9,13 +9,15 @@
   },
   "files": [
     "src",
+    "bin",
     "docs",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/",
-    "demo": "node test/demo.mjs"
+    "test": "node --test",
+    "demo": "node test/demo.mjs",
+    "cli": "node bin/cli.mjs"
   },
   "keywords": [
     "ai-agent",
@@ -24,7 +26,14 @@
     "long-term-memory",
     "anchors",
     "forgetting-curve",
-    "consolidation"
+    "consolidation",
+    "context-compaction",
+    "summarization",
+    "context-window",
+    "persona",
+    "knowledge-graph-viz",
+    "rules-extraction",
+    "sensitive-filter"
   ],
   "license": "MIT",
   "engines": {
@@ -38,5 +47,8 @@
   "homepage": "https://github.com/fushui-menghua/dsh-memory-graph-chiyo",
   "bugs": {
     "url": "https://github.com/fushui-menghua/dsh-memory-graph-chiyo/issues"
+  },
+  "bin": {
+    "memory-graph": "./bin/cli.mjs"
   }
 }

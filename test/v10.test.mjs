@@ -108,13 +108,17 @@ test('桥接：做梦时间窗与待办节拍', () => {
   bm.write([{ kind: 'fact', text: '她喜欢雨天', anchors: [{ quote: '喜欢雨天' }] }]);
 
   const night = new Date('2026-11-08T03:00:00+08:00').getTime();
-  const tick = bm.dreamTick({ now: night, fromHour: 2, toHour: 7 });
+  const tick = bm.dreamTick({ now: night, fromHour: 2, toHour: 7, hour: 3 });
   assert.ok(tick, '凌晨应能做梦');
   assert.ok(tick.seed.length >= 1);
   assert.match(tick.prompt, /揉成一个梦/);
 
   const day = new Date('2026-11-08T15:00:00+08:00').getTime();
-  assert.equal(bm.dreamTick({ now: day }), null, '白天不该做梦');
+  assert.equal(bm.dreamTick({ now: day, hour: 15 }), null, '白天不该做梦');
+
+  // 也验证时区参数（UTC 服务器场景）
+  const utcNight = new Date('2026-11-08T19:00:00Z').getTime(); // 上海时间凌晨 3 点
+  assert.ok(bm.dreamTick({ now: utcNight, timeZone: 'Asia/Shanghai' }), '按时区判断应能做梦');
 
   bm.tasks.add({ text: '整理星图' });
   const plan = bm.plan();

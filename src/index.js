@@ -27,6 +27,12 @@ import { assembleContext } from './assemble.js';
 import { exportBundle, importBundle, saveBundle, loadBundle } from './snapshot.js';
 import { scanConflicts, findConflict, polarityOf } from './conflicts.js';
 import { scanStore, repairStore } from './repair.js';
+import { backfill, validateBackfill } from './backfill.js';
+import { createAccess } from './access.js';
+import { renderGalaxyHtml } from './galaxy.js';
+import { MoodLayer } from './emotions.js';
+import { DreamLayer } from './dream.js';
+import { TaskList } from './tasks.js';
 
 export { JsonlStore } from './store.js';
 export { MemoryGraph, LAYERS, KINDS, CATEGORIES, REL_TYPES, PLAN_STATUSES, similarity, normalizeText, importanceOf } from './core.js';
@@ -48,6 +54,12 @@ export { assembleContext } from './assemble.js';
 export { exportBundle, importBundle, saveBundle, loadBundle } from './snapshot.js';
 export { scanConflicts, findConflict, polarityOf } from './conflicts.js';
 export { scanStore, repairStore } from './repair.js';
+export { backfill, validateBackfill, BACKFILL_SOURCES, BACKFILL_WEIGHT } from './backfill.js';
+export { createAccess, DEFAULT_RULES } from './access.js';
+export { renderGalaxyHtml, writeGalaxyHtml } from './galaxy.js';
+export { MoodLayer, MOOD_SCOPE, MOOD_LABELS } from './emotions.js';
+export { DreamLayer, DREAM_SCOPE } from './dream.js';
+export { TaskList, TASK_SCOPE, TASK_STATUSES } from './tasks.js';
 
 export function createMemory({ dir, options = {}, clock } = {}) {
   const store = new JsonlStore({ dir: dir || './memory-data' });
@@ -56,14 +68,23 @@ export function createMemory({ dir, options = {}, clock } = {}) {
   const shared = new SharedMemory({ store, clock });
   const personLayer = new PersonLayer({ store, clock });
   const persona = new Persona({ store, clock });
+  const moodLayer = new MoodLayer({ store, clock });
+  const dreamLayer = new DreamLayer({ store, clock });
+  const taskList = new TaskList({ store, clock });
 
   const memory = {
     store,
     graph,
     instant,
+    backfill: (scope, payload) => backfill(graph, scope, payload),
+    access: (opts) => createAccess(opts),
+    galaxyHtml: (nodes, opts) => renderGalaxyHtml(nodes, opts),
     shared,
     person: personLayer,
     persona,
+    mood: moodLayer,
+    dream: dreamLayer,
+    tasks: taskList,
 
     // 长期记忆
     write: (scope, payload) => graph.write(scope, payload),

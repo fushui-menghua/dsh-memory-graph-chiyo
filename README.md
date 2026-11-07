@@ -2,7 +2,7 @@
 
 > 可回溯、会遗忘、会睡觉整理的记忆内核。给 AI agent 用的长期记忆图。
 
-[![tests](https://img.shields.io/badge/tests-47%20passing-brightgreen)](https://github.com/fushui-menghua/dsh-memory-graph-chiyo)
+[![tests](https://img.shields.io/badge/tests-51%20passing-brightgreen)](https://github.com/fushui-menghua/dsh-memory-graph-chiyo)
 [![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/fushui-menghua/dsh-memory-graph-chiyo/blob/main/LICENSE)
 
 ## 为什么又一个记忆库
@@ -65,6 +65,24 @@
 | 零依赖 | 只用 Node 内置模块 |
 
 ## 安装
+
+**作为库（推荐给开发者）**
+
+```bash
+npm i dsh-memory-graph-chiyo
+```
+
+**作为 DSH 插件（推荐给 DSH 用户）**
+
+```bash
+dsh plugin --profile web add dsh-memory-graph-chiyo
+```
+
+装上后 DSH 会注册 5 个工具：`memory_write` / `memory_recall` / `memory_health` / `memory_nightly` / `memory_shared`。
+数据默认在 `~/.dsh/memory-graph`，默认 scope `agent:memory`（可在 plugin 配置里改）。
+
+> 插件与库是同一个包：`import` 用 `./src/index.js`，DSH 走 `./plugin.js` 的 `apply(ctx)`。
+
 
 ```bash
 npm i dsh-memory-graph-chiyo

@@ -1,6 +1,6 @@
 {
   "name": "dsh-memory-graph-chiyo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Complete memory layer for bridge-based AI personas: anchored graph, backfill protocol, ACL, mood/dream/task, interactive galaxy map, recall baseline, nightly consolidation.",
   "type": "module",
   "main": "./src/index.js",

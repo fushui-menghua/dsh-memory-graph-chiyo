@@ -2,10 +2,13 @@
 # dsh-memory-graph-chiyo —— DSH bundle patch
 # 装上之后，profile 在 dsh.profile.bundles 里列出本包名即生效：
 #   dsh plugin --profile web add dsh-memory-graph-chiyo
+#
+# 注意：name 必须带 /plugin 子路径 —— 包根入口是库（createMemory），
+# 没有 apply()；插件入口在 ./plugin.js。
 # ============================================================================
 - insert:
     - id: memory-graph
-      name: dsh-memory-graph-chiyo
+      name: dsh-memory-graph-chiyo/plugin
       config:
         # 数据目录默认为 ~/.dsh/memory-graph，scope 默认为 agent:memory
         scope: agent:memory

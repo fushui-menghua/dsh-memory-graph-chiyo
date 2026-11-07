@@ -1,7 +1,7 @@
 {
   "name": "dsh-memory-graph-chiyo",
-  "version": "0.4.0",
-  "description": "Anchored memory + anchored compaction for AI agents: rules, person layer, personas, star-map viz, nightly consolidation. 零依赖。",
+  "version": "0.6.0",
+  "description": "Memory system for AI agents: anchored graph, auto-extraction, prompt assembly, conflict detection, snapshot, shared memory, consolidation. TypeScript types, zero deps.",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
@@ -11,13 +11,16 @@
     "src",
     "bin",
     "docs",
+    "index.d.ts",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
     "test": "node --test",
     "demo": "node test/demo.mjs",
-    "cli": "node bin/cli.mjs"
+    "cli": "node bin/cli.mjs",
+    "bench": "node bin/bench.mjs"
   },
   "keywords": [
     "ai-agent",
@@ -50,5 +53,6 @@
   },
   "bin": {
     "memory-graph": "./bin/cli.mjs"
-  }
+  },
+  "types": "./index.d.ts"
 }

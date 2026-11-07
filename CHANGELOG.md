@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.7.0 — 2026-11-07
+
+从「库」变成「既能 import、也能装进 DSH 的插件」。
+
+### 新增
+- `plugin.js`：DSH 插件入口，`apply(ctx, config)` 注册 5 个工具
+  - `memory_write` 写记忆（带锚点）
+  - `memory_recall` 召回
+  - `memory_health` 体检
+  - `memory_nightly` 夜间整理（默认 dry-run）
+  - `memory_shared` 共享记忆（list/propose/approve/revoke）
+- `cordis.patch.yml`：bundle patch，profile 列出包名即挂载
+- `package.json` 增加 `dsh.bundle.patch`、`exports["./plugin"]`、`engines.dsh`
+- 数据目录默认 `~/.dsh/memory-graph`，默认 scope `agent:memory`
+
+### 兼容
+- 没有 `dsh-tools` 时用内置 `defineTool` 兜底（参数映射自动转 JSON Schema）
+- 单个工具注册失败不影响其它工具
+
+### 测试
+47 → **51**（新增插件注册、schema、体检/夜间、共享流程）
+
 ## 0.6.0 — 2026-11-07
 
 收口这一版，目标是"别人敢用"。
